@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Curved Slider - Three.js CDN</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Arial", sans-serif;
+        background: #000;
+        overflow: hidden;
+      }
+
+      /* Curved Slider Styles */
+      .curved-slider {
+        position: relative;
+        width: 100%;
+        height: 100vh;
+        background: #000;
+        overflow: hidden;
+        cursor: grab;
+      }
+
+      .curved-slider.dragging {
+        cursor: grabbing;
+      }
+
+      .curved-slider canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        user-select: none;
+      }
+
+      /* Loading */
+      .loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 18px;
+        z-index: 50;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading -->
+    <div class="loading" id="loading">Loading Three.js...</div>
+
+    <!-- Curved Slider Container -->
+    <div class="curved-slider" id="curvedSlider">
+      <!-- Canvas will be injected by Three.js -->
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+
+    <script>
+      var initialValueSlider = {
+        speed: 10,
+        gap: 10,
+        curve: 12,
+        direction: -1,
+        dragSensitivity: 1.0,
+        imagesPerView: 9,
+        borderRadius: 0.1,
+      };
+      class CurvedSlider3D {
+        constructor(selector, options = {}) {
+          this.container = document.querySelector(selector);
+          this.scene = null;
+          this.camera = null;
+          this.renderer = null;
+          this.planes = [];
+          this.time = 0;
+
+          this.options = {
+            speed: 30,
+            gap: 10,
+            curve: 12,
+            direction: -1,
+            dragSensitivity: 1.0,
+            imagesPerView: 9,
+            borderRadius: 0.1,
+            images: [
+              "https://images.unsplash.com/photo-1753051433052-71ce5afa6ef3?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+              "https://images.unsplash.com/photo-1752939124510-e444139e6404?w=600&h=400&fit=crop",
+              "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=600&h=400&fit=crop",
+              "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=400&fit=crop",
+              "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=400&fit=crop",
+              "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=600&h=400&fit=crop",
+              "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop",
+              "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=600&h=400&fit=crop",
+              "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=600&h=400&fit=crop",
+              "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=400&fit=crop",
+            ],
+            ...options,
+          };
+
+          this.state = {
+            isPaused: false,
+            isReversed: false,
+            isDragging: false,
+            dragStart: { x: 0, y: 0 },
+            dragCurrent: { x: 0, y: 0 },
+            dragVelocity: 0,
+            targetVelocity: 0,
+            autoScrollBeforeDrag: false,
+          };
+
+          this.init();
+        }
+
+        init() {
+          document.getElementById("loading").style.display = "none";
+          this.setupScene();
+          this.setupDragControls();
+          this.createPlanes();
+          this.setupResize();
+          this.animate();
+        }
+
+        setupScene() {
+          // Scene
+          this.scene = new THREE.Scene();
+
+          // Camera
+          this.camera = new THREE.PerspectiveCamera(
+            75,
+            this.container.clientWidth / this.container.clientHeight,
+            0.1,
+            20
+          );
+          this.camera.position.z = 3;
+
+          // Renderer
+          this.renderer = new THREE.WebGLRenderer({
+            alpha: true,
+            antialias: true,
+          });
+          this.renderer.setSize(
+            this.container.clientWidth,
+            this.container.clientHeight
+          );
+          this.renderer.setPixelRatio(window.devicePixelRatio);
+
+          // Remove previous canvas if exists
+          const previousCanvas = this.container.querySelector("canvas");
+          if (previousCanvas) {
+            this.container.removeChild(previousCanvas);
+          }
+
+          this.container.appendChild(this.renderer.domElement);
+        }
+
+        setupDragControls() {
+          let startTime = 0;
+          let startPosition = 0;
+
+          // Mouse events
+          this.container.addEventListener("mousedown", (e) => {
+            this.startDrag(e.clientX, e.clientY);
+            startTime = Date.now();
+            startPosition = e.clientX;
+          });
+
+          document.addEventListener("mousemove", (e) => {
+            if (this.state.isDragging) {
+              this.updateDrag(e.clientX, e.clientY);
+            }
+          });
+
+          document.addEventListener("mouseup", (e) => {
+            if (this.state.isDragging) {
+              const endTime = Date.now();
+              const endPosition = e.clientX;
+              const deltaTime = endTime - startTime;
+              const deltaPosition = endPosition - startPosition;
+
+              // Calculate velocity for momentum
+              if (deltaTime > 0) {
+                this.state.targetVelocity =
+                  (deltaPosition / deltaTime) *
+                  this.options.dragSensitivity *
+                  0.1;
+              }
+
+              this.endDrag();
+            }
+          });
+
+          // Touch events
+          this.container.addEventListener(
+            "touchstart",
+            (e) => {
+              e.preventDefault();
+              const touch = e.touches[0];
+              this.startDrag(touch.clientX, touch.clientY);
+              startTime = Date.now();
+              startPosition = touch.clientX;
+            },
+            { passive: false }
+          );
+
+          document.addEventListener(
+            "touchmove",
+            (e) => {
+              if (this.state.isDragging) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                this.updateDrag(touch.clientX, touch.clientY);
+              }
+            },
+            { passive: false }
+          );
+
+          document.addEventListener("touchend", (e) => {
+            if (this.state.isDragging) {
+              const touch = e.changedTouches[0];
+              const endTime = Date.now();
+              const endPosition = touch.clientX;
+              const deltaTime = endTime - startTime;
+              const deltaPosition = endPosition - startPosition;
+
+              // Calculate velocity for momentum
+              if (deltaTime > 0) {
+                this.state.targetVelocity =
+                  (deltaPosition / deltaTime) *
+                  this.options.dragSensitivity *
+                  0.1;
+              }
+
+              this.endDrag();
+            }
+          });
+
+          // Prevent context menu on long press
+          this.container.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+          });
+        }
+
+        startDrag(x, y) {
+          this.state.isDragging = true;
+          this.state.dragStart.x = x;
+          this.state.dragStart.y = y;
+          this.state.dragCurrent.x = x;
+          this.state.dragCurrent.y = y;
+          this.state.dragVelocity = 0;
+          this.state.targetVelocity = 0;
+
+          // Store auto-scroll state and pause it
+          this.state.autoScrollBeforeDrag = !this.state.isPaused;
+
+          this.container.classList.add("dragging");
+          document.body.style.userSelect = "none";
+        }
+
+        updateDrag(x, y) {
+          if (!this.state.isDragging) return;
+
+          const deltaX = x - this.state.dragCurrent.x;
+          this.state.dragCurrent.x = x;
+          this.state.dragCurrent.y = y;
+
+          // Apply drag movement
+          this.state.dragVelocity =
+            deltaX * this.options.dragSensitivity * 0.001;
+          this.time += this.state.dragVelocity;
+
+          // Check for infinite scroll boundaries during drag
+          this.checkInfiniteScrollBounds();
+        }
+
+        endDrag() {
+          this.state.isDragging = false;
+          this.container.classList.remove("dragging");
+          document.body.style.userSelect = "";
+        }
+
+        getWidth(gap) {
+          return 1 + gap / 100;
+        }
+
+        getPlaneWidth(camera) {
+          const vFov = (camera.fov * Math.PI) / 180;
+          const height = 2 * Math.tan(vFov / 2) * camera.position.z;
+          const aspect =
+            this.container.clientWidth / this.container.clientHeight;
+          const width = height * aspect;
+
+          // Calculate width based on desired images per view
+          const availableWidth = this.container.clientWidth / width;
+          const planeWidth = availableWidth / this.options.imagesPerView;
+
+          return planeWidth;
+        }
+
+        createPlanes() {
+          // Clear existing planes
+          this.planes.forEach((plane) => {
+            if (plane) {
+              this.scene.remove(plane);
+            }
+          });
+          this.planes = [];
+
+          const geometry = new THREE.PlaneGeometry(0.9, 1.2, 20, 20); // Slightly taller aspect ratio
+          const planeSpace =
+            this.getPlaneWidth(this.camera) * this.getWidth(this.options.gap);
+
+          // Create more planes for better infinite scrolling coverage
+          const baseImages =
+            Math.ceil(this.container.clientWidth / planeSpace) + 1;
+          const extraPadding = Math.max(10, this.options.images.length); // Extra buffer for fast dragging
+          const totalImages =
+            baseImages + extraPadding + this.options.images.length * 2;
+
+          const initialOffset = Math.ceil(totalImages / 2);
+
+          // Duplicate images for seamless loop with extra coverage
+          const allImages = [];
+          for (let i = 0; i < totalImages; i++) {
+            allImages.push(this.options.images[i % this.options.images.length]);
+          }
+
+          allImages.forEach((imageUrl, i) => {
+            const loader = new THREE.TextureLoader();
+            loader.load(imageUrl, (texture) => {
+              const material = new THREE.ShaderMaterial({
+                uniforms: {
+                  tex: { value: texture },
+                  curve: { value: this.options.curve },
+                  borderRadius: { value: this.options.borderRadius },
+                  resolution: { value: new THREE.Vector2(1, 1) },
+                },
+                vertexShader: `
+                                uniform float curve;
+                                varying vec2 vertexUV;
+                                void main(){
+                                    vertexUV = uv;
+                                    vec3 newPosition = position;
+                                    float distanceFromCenter = abs(modelMatrix*vec4(position, 1.0)).x;
+                                    newPosition.y *= 1.0 + (curve/100.0)*pow(distanceFromCenter,2.0);
+
+                                    gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+                                }
+                            `,
+                fragmentShader: `
+                                uniform sampler2D tex;
+                                uniform float borderRadius;
+                                uniform vec2 resolution;
+                                varying vec2 vertexUV;
+
+                                float roundedRectSDF(vec2 centerPosition, vec2 size, float radius) {
+                                    return length(max(abs(centerPosition) - size + radius, 0.0)) - radius;
+                                }
+
+                                void main(){
+                                    vec2 uv = vertexUV;
+                                    vec2 center = uv - 0.5;
+                                    vec2 size = vec2(0.5);
+
+                                    float distance = roundedRectSDF(center, size, borderRadius);
+                                    float smoothedAlpha = 1.0 - smoothstep(0.0, 0.01, distance);
+
+                                    vec4 texColor = texture2D(tex, uv);
+                                    gl_FragColor = vec4(texColor.rgb, texColor.a * smoothedAlpha);
+                                }
+                            `,
+                transparent: true,
+              });
+
+              this.planes[i] = new THREE.Mesh(geometry, material);
+              this.planes[i].position.x =
+                -1 *
+                this.options.direction *
+                (i - initialOffset) *
+                this.getWidth(this.options.gap);
+              this.scene.add(this.planes[i]);
+            });
+          });
+        }
+
+        setupResize() {
+          let resizeTimeout;
+
+          window.addEventListener("resize", () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+              this.handleResize();
+            }, 100);
+          });
+        }
+
+        handleResize() {
+          this.camera.aspect =
+            this.container.clientWidth / this.container.clientHeight;
+          this.camera.updateProjectionMatrix();
+          this.renderer.setSize(
+            this.container.clientWidth,
+            this.container.clientHeight
+          );
+          this.createPlanes(); // Recreate planes for new dimensions
+        }
+
+        checkInfiniteScrollBounds() {
+          const loopWidth =
+            this.getWidth(this.options.gap) * this.options.images.length;
+
+          // Reset position for seamless infinite loop
+          if (this.time * this.options.speed >= loopWidth) {
+            this.time -= loopWidth / this.options.speed;
+          } else if (this.time * this.options.speed <= -loopWidth) {
+            this.time += loopWidth / this.options.speed;
+          }
+        }
+
+        animate(currentTime = 0) {
+          // Handle momentum from dragging
+          if (
+            !this.state.isDragging &&
+            Math.abs(this.state.targetVelocity) > 0.001
+          ) {
+            this.time += this.state.targetVelocity;
+            this.state.targetVelocity *= 0.95; // Friction
+            this.checkInfiniteScrollBounds();
+          }
+
+          // Normal auto-scroll
+          if (!this.state.isPaused && !this.state.isDragging) {
+            this.time += this.options.direction * 0.00001;
+            this.checkInfiniteScrollBounds();
+          }
+
+          // Update scene position
+          this.scene.position.x = this.time * this.options.speed;
+
+          this.renderer.render(this.scene, this.camera);
+          requestAnimationFrame((time) => this.animate(time));
+        }
+
+        destroy() {
+          this.planes.forEach((plane) => {
+            if (plane) {
+              this.scene.remove(plane);
+              if (plane.material) {
+                plane.material.dispose();
+              }
+              if (plane.geometry) {
+                plane.geometry.dispose();
+              }
+            }
+          });
+
+          if (this.renderer) {
+            this.renderer.dispose();
+            if (this.renderer.domElement.parentNode) {
+              this.renderer.domElement.parentNode.removeChild(
+                this.renderer.domElement
+              );
+            }
+          }
+        }
+      }
+
+      // Initialize when DOM and Three.js are loaded
+      document.addEventListener("DOMContentLoaded", function () {
+        // Check if Three.js is loaded
+        if (typeof THREE === "undefined") {
+          document.getElementById("loading").textContent =
+            "Failed to load Three.js";
+          return;
+        }
+
+        const slider = new CurvedSlider3D("#curvedSlider", {
+          speed: 10,
+          gap: 10,
+          curve: 12,
+          direction: -1,
+          dragSensitivity: 1.0,
+          imagesPerView: 9,
+          borderRadius: 0.1,
+        });
+
+        window.curvedSlider = slider;
+      });
+    </script>
+  </body>
+</html>
