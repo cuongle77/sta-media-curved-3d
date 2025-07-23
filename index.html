@@ -65,12 +65,12 @@
     <script>
       var initialValueSlider = {
         speed: 10,
-        gap: 5,
-        curve: 8,
+        gap: -20,
+        curve: 15,
         direction: -1,
         dragSensitivity: 0.9,
-        imagesPerView: 10,
-        borderRadius: 0.05,
+        imagesPerView: 9,
+        borderRadius: 0,
       };
       class CurvedSlider3D {
         constructor(selector, options = {}) {
@@ -84,27 +84,13 @@
           this.options = {
             ...initialValueSlider,
             images: [
-              "./images/frame-01.jpg",
-              "./images/frame-02.jpg",
-              "./images/frame-03.jpg",
-              "./images/frame-04.jpg",
-              "./images/frame-16.jpg",
-              "./images/frame-05.jpg",
-              "./images/frame-06.jpg",
-              "./images/frame-14.jpg",
-              "./images/frame-10.jpg",
-              "./images/frame-07.jpg",
-              "./images/frame-08.jpg",
-              "./images/frame-21.jpg",
-              "./images/frame-09.jpg",
-              "./images/frame-11.jpg",
-              "./images/frame-12.jpg",
-              "./images/frame-13.jpg",
-              "./images/frame-15.jpg",
-              "./images/frame-17.jpg",
-              "./images/frame-18.jpg",
-              "./images/frame-19.jpg",
-              "./images/frame-20.jpg",
+              "https://framerusercontent.com/images/EXBKz5HVEFx00O24ZCR2veKrNY.png?scale-down-to=1024",
+              "https://framerusercontent.com/images/VmCsluO8XGEoJuDxdWFRW9bTY4.png?scale-down-to=1024",
+              "https://framerusercontent.com/images/vrjpq3t35s6ZnmUqIxrOIevTsU.png?scale-down-to=1024",
+              "https://framerusercontent.com/images/vhHIJv4PmmgQ1TXOzia8Qs7b5g.png?scale-down-to=1024",
+              "https://framerusercontent.com/images/F9LoqzZkQUYA0UTzwbeKgrHtxU.png?scale-down-to=1024",
+              "https://framerusercontent.com/images/qqgMFFhBjbmzllL7E6Dml51Gw.png?scale-down-to=512",
+              "https://framerusercontent.com/images/y6nsXyFCXVHybL6AG2drPt8Xug.png?scale-down-to=1024",
             ],
             ...options,
           };
@@ -142,7 +128,7 @@
             0.1,
             20
           );
-          this.camera.position.z = 2;
+          this.camera.position.z = 2.8;
 
           // Renderer
           this.renderer = new THREE.WebGLRenderer({
@@ -305,7 +291,7 @@
           });
           const loader = new THREE.TextureLoader(manager);
 
-          const geometry = new THREE.PlaneGeometry(0.9, 1.2, 20, 20); // Slightly taller aspect ratio
+          const geometry = new THREE.PlaneGeometry(0.7, 0.9, 20, 20); // Slightly taller aspect ratio
           const planeSpace =
             this.getPlaneWidth(this.camera) * this.getWidth(this.options.gap);
 
@@ -334,39 +320,39 @@
                   resolution: { value: new THREE.Vector2(1, 1) },
                 },
                 vertexShader: `
-                                uniform float curve;
-                                varying vec2 vertexUV;
-                                void main(){
-                                    vertexUV = uv;
-                                    vec3 newPosition = position;
-                                    float distanceFromCenter = abs(modelMatrix*vec4(position, 1.0)).x;
-                                    newPosition.y *= 1.0 + (curve/100.0)*pow(distanceFromCenter,2.0);
+                  uniform float curve;
+                  varying vec2 vertexUV;
+                  void main() {
+                    vertexUV = uv;
+                    vec3 newPosition = position;
+                    float distanceFromCenter = abs(modelMatrix*vec4(position, 1.0)).x;
+                    newPosition.y *= 1.0 + (curve/100.0)*pow(distanceFromCenter,2.0);
 
-                                    gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
-                                }
-                            `,
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+                  }
+                `,
                 fragmentShader: `
-                                uniform sampler2D tex;
-                                uniform float borderRadius;
-                                uniform vec2 resolution;
-                                varying vec2 vertexUV;
+                  uniform sampler2D tex;
+                  uniform float borderRadius;
+                  uniform vec2 resolution;
+                  varying vec2 vertexUV;
 
-                                float roundedRectSDF(vec2 centerPosition, vec2 size, float radius) {
-                                    return length(max(abs(centerPosition) - size + radius, 0.0)) - radius;
-                                }
+                  float roundedRectSDF(vec2 centerPosition, vec2 size, float radius) {
+                    return length(max(abs(centerPosition) - size + radius, 0.0)) - radius;
+                  }
 
-                                void main(){
-                                    vec2 uv = vertexUV;
-                                    vec2 center = uv - 0.5;
-                                    vec2 size = vec2(0.5);
+                  void main() {
+                    vec2 uv = vertexUV;
+                    vec2 center = uv - 0.5;
+                    vec2 size = vec2(0.5);
 
-                                    float distance = roundedRectSDF(center, size, borderRadius);
-                                    float smoothedAlpha = 1.0 - smoothstep(0.0, 0.01, distance);
+                    float distance = roundedRectSDF(center, size, borderRadius);
+                    float smoothedAlpha = 1.0 - smoothstep(0.0, 0.01, distance);
 
-                                    vec4 texColor = texture2D(tex, uv);
-                                    gl_FragColor = vec4(texColor.rgb, texColor.a * smoothedAlpha);
-                                }
-                            `,
+                    vec4 texColor = texture2D(tex, uv);
+                    gl_FragColor = vec4(texColor.rgb, texColor.a * smoothedAlpha);
+                  }
+                `,
                 transparent: true,
               });
 
