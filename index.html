@@ -83,18 +83,28 @@
 
           this.options = {
             ...initialValueSlider,
-            autoPlay: true,
             images: [
-              "https://images.unsplash.com/photo-1753051433052-71ce5afa6ef3?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-              "https://images.unsplash.com/photo-1752939124510-e444139e6404?w=600&h=400&fit=crop",
-              "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=600&h=400&fit=crop",
-              "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=400&fit=crop",
-              "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=400&fit=crop",
-              "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=600&h=400&fit=crop",
-              "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop",
-              "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=600&h=400&fit=crop",
-              "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=600&h=400&fit=crop",
-              "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=400&fit=crop",
+              "./images/frame-01.jpg",
+              "./images/frame-02.jpg",
+              "./images/frame-03.jpg",
+              "./images/frame-04.jpg",
+              "./images/frame-16.jpg",
+              "./images/frame-05.jpg",
+              "./images/frame-06.jpg",
+              "./images/frame-14.jpg",
+              "./images/frame-10.jpg",
+              "./images/frame-07.jpg",
+              "./images/frame-08.jpg",
+              "./images/frame-21.jpg",
+              "./images/frame-09.jpg",
+              "./images/frame-11.jpg",
+              "./images/frame-12.jpg",
+              "./images/frame-13.jpg",
+              "./images/frame-15.jpg",
+              "./images/frame-17.jpg",
+              "./images/frame-18.jpg",
+              "./images/frame-19.jpg",
+              "./images/frame-20.jpg",
             ],
             ...options,
           };
@@ -418,7 +428,7 @@
 
           // Normal auto-scroll
           if (!this.state.isPaused && !this.state.isDragging) {
-            this.time += this.options.direction * 0.00003;
+            this.time += this.options.direction * 0.00001;
             this.checkInfiniteScrollBounds();
           }
 
