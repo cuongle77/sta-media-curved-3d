@@ -11,18 +11,11 @@
         box-sizing: border-box;
       }
 
-      body {
-        font-family: "Arial", sans-serif;
-        background: #000;
-        overflow: hidden;
-      }
-
       /* Curved Slider Styles */
       .curved-slider {
         position: relative;
         width: 100%;
         height: 100vh;
-        background: #000;
         overflow: hidden;
         cursor: grab;
       }
@@ -34,10 +27,13 @@
       .curved-slider canvas {
         position: absolute;
         top: 0;
+        bottom: 0;
         left: 0;
         width: 100%;
         height: 100%;
         user-select: none;
+        pointer-events: none;
+        z-index: -1;
       }
 
       /* Loading */
@@ -54,7 +50,7 @@
   </head>
   <body>
     <!-- Loading -->
-    <div class="loading" id="loading">Loading Three.js...</div>
+    <div class="loading" id="loading">Loading...</div>
 
     <!-- Curved Slider Container -->
     <div class="curved-slider" id="curvedSlider">
@@ -67,12 +63,12 @@
     <script>
       var initialValueSlider = {
         speed: 10,
-        gap: 10,
-        curve: 12,
+        gap: 5,
+        curve: 8,
         direction: -1,
-        dragSensitivity: 1.0,
-        imagesPerView: 9,
-        borderRadius: 0.1,
+        dragSensitivity: 0.9,
+        imagesPerView: 10,
+        borderRadius: 0.05,
       };
       class CurvedSlider3D {
         constructor(selector, options = {}) {
@@ -84,13 +80,8 @@
           this.time = 0;
 
           this.options = {
-            speed: 30,
-            gap: 10,
-            curve: 12,
-            direction: -1,
-            dragSensitivity: 1.0,
-            imagesPerView: 9,
-            borderRadius: 0.1,
+            ...initialValueSlider,
+            autoPlay: true,
             images: [
               "https://images.unsplash.com/photo-1753051433052-71ce5afa6ef3?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
               "https://images.unsplash.com/photo-1752939124510-e444139e6404?w=600&h=400&fit=crop",
@@ -121,7 +112,6 @@
         }
 
         init() {
-          document.getElementById("loading").style.display = "none";
           this.setupScene();
           this.setupDragControls();
           this.createPlanes();
@@ -140,7 +130,7 @@
             0.1,
             20
           );
-          this.camera.position.z = 3;
+          this.camera.position.z = 2;
 
           // Renderer
           this.renderer = new THREE.WebGLRenderer({
@@ -186,14 +176,6 @@
               const deltaTime = endTime - startTime;
               const deltaPosition = endPosition - startPosition;
 
-              // Calculate velocity for momentum
-              if (deltaTime > 0) {
-                this.state.targetVelocity =
-                  (deltaPosition / deltaTime) *
-                  this.options.dragSensitivity *
-                  0.1;
-              }
-
               this.endDrag();
             }
           });
@@ -231,14 +213,6 @@
               const deltaTime = endTime - startTime;
               const deltaPosition = endPosition - startPosition;
 
-              // Calculate velocity for momentum
-              if (deltaTime > 0) {
-                this.state.targetVelocity =
-                  (deltaPosition / deltaTime) *
-                  this.options.dragSensitivity *
-                  0.1;
-              }
-
               this.endDrag();
             }
           });
@@ -274,7 +248,7 @@
 
           // Apply drag movement
           this.state.dragVelocity =
-            deltaX * this.options.dragSensitivity * 0.001;
+            -deltaX * this.options.dragSensitivity * 0.001;
           this.time += this.state.dragVelocity;
 
           // Check for infinite scroll boundaries during drag
@@ -314,6 +288,11 @@
           });
           this.planes = [];
 
+          const manager = new THREE.LoadingManager(() => {
+            document.getElementById("loading").style.display = "none";
+          });
+          const loader = new THREE.TextureLoader(manager);
+
           const geometry = new THREE.PlaneGeometry(0.9, 1.2, 20, 20); // Slightly taller aspect ratio
           const planeSpace =
             this.getPlaneWidth(this.camera) * this.getWidth(this.options.gap);
@@ -324,7 +303,6 @@
           const extraPadding = Math.max(10, this.options.images.length); // Extra buffer for fast dragging
           const totalImages =
             baseImages + extraPadding + this.options.images.length * 2;
-
           const initialOffset = Math.ceil(totalImages / 2);
 
           // Duplicate images for seamless loop with extra coverage
@@ -334,7 +312,6 @@
           }
 
           allImages.forEach((imageUrl, i) => {
-            const loader = new THREE.TextureLoader();
             loader.load(imageUrl, (texture) => {
               const material = new THREE.ShaderMaterial({
                 uniforms: {
@@ -438,7 +415,7 @@
 
           // Normal auto-scroll
           if (!this.state.isPaused && !this.state.isDragging) {
-            this.time += this.options.direction * 0.00001;
+            this.time += this.options.direction * 0.00003;
             this.checkInfiniteScrollBounds();
           }
 
@@ -483,13 +460,7 @@
         }
 
         const slider = new CurvedSlider3D("#curvedSlider", {
-          speed: 10,
-          gap: 10,
-          curve: 12,
-          direction: -1,
-          dragSensitivity: 1.0,
-          imagesPerView: 9,
-          borderRadius: 0.1,
+          ...initialValueSlider,
         });
 
         window.curvedSlider = slider;
