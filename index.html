@@ -43,11 +43,10 @@
   </head>
   <body>
     <!-- Loading -->
-    <div class="loading" id="loading">Loading...</div>
 
     <!-- Curved Slider Container -->
     <div class="curved-slider" id="curvedSlider">
-      <!-- Canvas will be injected by Three.js -->
+      <div class="loading" id="loading">Loading...</div>
     </div>
 
     <!-- Three.js CDN -->
@@ -299,6 +298,7 @@
           const initialOffset = Math.ceil(totalImages / 2);
 
           // Duplicate images for seamless loop with extra coverage
+          console.log({ totalImages, images: this.options });
           const allImages = [];
           for (let i = 0; i < totalImages; i++) {
             allImages.push(this.options.images[i % this.options.images.length]);
@@ -443,6 +443,24 @@
         }
       }
 
+      function waitForHeight(el, callback) {
+        const maxAttempts = 20;
+        let attempts = 0;
+
+        const check = () => {
+          if (el.clientHeight > 0) {
+            callback();
+          } else if (attempts < maxAttempts) {
+            attempts++;
+            requestAnimationFrame(check);
+          } else {
+            console.warn("Container has no height after waiting.");
+          }
+        };
+
+        check();
+      }
+
       // Initialize when DOM and Three.js are loaded
       document.addEventListener("DOMContentLoaded", function () {
         // Check if Three.js is loaded
@@ -452,11 +470,15 @@
           return;
         }
 
-        const slider = new CurvedSlider3D("#curvedSlider", {
-          ...initialValueSlider,
-        });
+        const container = document.querySelector("#curvedSlider");
 
-        window.curvedSlider = slider;
+        waitForHeight(container, () => {
+          const slider = new CurvedSlider3D("#curvedSlider", {
+            ...initialValueSlider,
+          });
+
+          window.curvedSlider = slider;
+        });
       });
     </script>
   </body>
