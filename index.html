@@ -485,6 +485,14 @@
 
           window.curvedSlider = slider;
         });
+
+        document.addEventListener("mousemove", (e) => {
+          // Gửi tọa độ ra ngoài (parent)
+          window.parent.postMessage(
+            { type: "mousemove", x: e.clientX, y: e.clientY },
+            "*"
+          );
+        });
       });
     </script>
   </body>
