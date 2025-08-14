@@ -85,12 +85,14 @@
             ...initialValueSlider,
             images: [
               "./images/frame-01.jpg",
+              "./images/frame-02.jpg",
+              "./images/frame-03.jpg",
+              "./images/frame-04.jpg",
+              "./images/frame-05.jpg",
               "./images/frame-06.jpg",
               "./images/frame-07.jpg",
               "./images/frame-08.jpg",
-              "./images/frame-11.jpg",
-              "./images/frame-12.jpg",
-              "./images/frame-16.jpg",
+              "./images/frame-09.jpg",
             ],
             ...options,
           };
@@ -153,16 +155,42 @@
         setupDragControls() {
           let startTime = 0;
           let startPosition = 0;
+          let lastMoveTime = 0;
+          let lastPosition = 0;
+          let velocityHistory = []; // Lưu lịch sử velocity để tính trung bình
 
           // Mouse events
           this.container.addEventListener("mousedown", (e) => {
             this.startDrag(e.clientX, e.clientY);
             startTime = Date.now();
             startPosition = e.clientX;
+            lastMoveTime = startTime;
+            lastPosition = e.clientX;
+            velocityHistory = [];
           });
 
           document.addEventListener("mousemove", (e) => {
             if (this.state.isDragging) {
+              const currentTime = Date.now();
+              const currentPosition = e.clientX;
+
+              // Tính velocity cho frame này
+              const deltaTime = currentTime - lastMoveTime;
+              const deltaPosition = currentPosition - lastPosition;
+
+              if (deltaTime > 0) {
+                const frameVelocity = deltaPosition / deltaTime;
+                velocityHistory.push(frameVelocity);
+
+                // Chỉ giữ lại 5 frame gần nhất để tính trung bình
+                if (velocityHistory.length > 5) {
+                  velocityHistory.shift();
+                }
+              }
+
+              lastMoveTime = currentTime;
+              lastPosition = currentPosition;
+
               this.updateDrag(e.clientX, e.clientY);
             }
           });
@@ -171,14 +199,20 @@
             if (this.state.isDragging) {
               const endTime = Date.now();
               const endPosition = e.clientX;
-              const deltaTime = endTime - startTime;
-              const deltaPosition = endPosition - startPosition;
 
-              this.endDrag();
+              // Tính velocity trung bình từ lịch sử
+              let avgVelocity = 0;
+              if (velocityHistory.length > 0) {
+                avgVelocity =
+                  velocityHistory.reduce((a, b) => a + b, 0) /
+                  velocityHistory.length;
+              }
+
+              this.endDrag(avgVelocity);
             }
           });
 
-          // Touch events
+          // Touch events - tương tự
           this.container.addEventListener(
             "touchstart",
             (e) => {
@@ -187,6 +221,9 @@
               this.startDrag(touch.clientX, touch.clientY);
               startTime = Date.now();
               startPosition = touch.clientX;
+              lastMoveTime = startTime;
+              lastPosition = touch.clientX;
+              velocityHistory = [];
             },
             { passive: false }
           );
@@ -197,6 +234,25 @@
               if (this.state.isDragging) {
                 e.preventDefault();
                 const touch = e.touches[0];
+
+                const currentTime = Date.now();
+                const currentPosition = touch.clientX;
+
+                const deltaTime = currentTime - lastMoveTime;
+                const deltaPosition = currentPosition - lastPosition;
+
+                if (deltaTime > 0) {
+                  const frameVelocity = deltaPosition / deltaTime;
+                  velocityHistory.push(frameVelocity);
+
+                  if (velocityHistory.length > 5) {
+                    velocityHistory.shift();
+                  }
+                }
+
+                lastMoveTime = currentTime;
+                lastPosition = currentPosition;
+
                 this.updateDrag(touch.clientX, touch.clientY);
               }
             },
@@ -205,13 +261,14 @@
 
           document.addEventListener("touchend", (e) => {
             if (this.state.isDragging) {
-              const touch = e.changedTouches[0];
-              const endTime = Date.now();
-              const endPosition = touch.clientX;
-              const deltaTime = endTime - startTime;
-              const deltaPosition = endPosition - startPosition;
+              let avgVelocity = 0;
+              if (velocityHistory.length > 0) {
+                avgVelocity =
+                  velocityHistory.reduce((a, b) => a + b, 0) /
+                  velocityHistory.length;
+              }
 
-              this.endDrag();
+              this.endDrag(avgVelocity);
             }
           });
 
@@ -253,10 +310,19 @@
           this.checkInfiniteScrollBounds();
         }
 
-        endDrag() {
+        endDrag(velocity = 0) {
           this.state.isDragging = false;
           this.container.classList.remove("dragging");
           document.body.style.userSelect = "";
+
+          const momentumMultiplier = this.options.dragSensitivity * 0.005;
+          this.state.targetVelocity = -velocity * momentumMultiplier;
+
+          const maxVelocity = 0.02;
+          this.state.targetVelocity = Math.max(
+            -maxVelocity,
+            Math.min(maxVelocity, this.state.targetVelocity)
+          );
         }
 
         getWidth(gap) {
@@ -408,12 +474,16 @@
             Math.abs(this.state.targetVelocity) > 0.001
           ) {
             this.time += this.state.targetVelocity;
-            this.state.targetVelocity *= 0.95; // Friction
+            this.state.targetVelocity *= 0.92; // Friction
             this.checkInfiniteScrollBounds();
           }
 
           // Normal auto-scroll
-          if (!this.state.isPaused && !this.state.isDragging) {
+          if (
+            !this.state.isPaused &&
+            !this.state.isDragging &&
+            Math.abs(this.state.targetVelocity) <= 0.0001
+          ) {
             this.time += this.options.direction * 0.00001;
             this.checkInfiniteScrollBounds();
           }
