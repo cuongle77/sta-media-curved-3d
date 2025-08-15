@@ -378,12 +378,23 @@
 
           allImages.forEach((imageUrl, i) => {
             loader.load(imageUrl, (texture) => {
+              // Cải thiện chất lượng texture
+              texture.minFilter = THREE.LinearFilter;
+              texture.magFilter = THREE.LinearFilter;
+              texture.generateMipmaps = false;
+
+              // Tính toán aspect ratio của texture và plane
+              const imageAspect = texture.image.width / texture.image.height;
+              const planeAspect = 0.65 / 0.85; // geometry aspect ratio
+
               const material = new THREE.ShaderMaterial({
                 uniforms: {
                   tex: { value: texture },
                   curve: { value: this.options.curve },
                   borderRadius: { value: this.options.borderRadius },
                   resolution: { value: new THREE.Vector2(1, 1) },
+                  imageAspect: { value: imageAspect },
+                  planeAspect: { value: planeAspect },
                 },
                 vertexShader: `
                   uniform float curve;
@@ -401,6 +412,8 @@
                   uniform sampler2D tex;
                   uniform float borderRadius;
                   uniform vec2 resolution;
+                  uniform float imageAspect;
+                  uniform float planeAspect;
                   varying vec2 vertexUV;
 
                   float roundedRectSDF(vec2 centerPosition, vec2 size, float radius) {
@@ -409,13 +422,31 @@
 
                   void main() {
                     vec2 uv = vertexUV;
+
+                    // Tính toán cover effect
+                    vec2 coverUV = uv;
+                    float scale = max(planeAspect / imageAspect, 1.0);
+
+                    if (imageAspect > planeAspect) {
+                      // Image rộng hơn plane, scale theo height
+                      scale = 1.0 / imageAspect * planeAspect;
+                      coverUV.x = (uv.x - 0.5) * scale + 0.5;
+                    } else {
+                      // Image cao hơn plane, scale theo width
+                      scale = imageAspect / planeAspect;
+                      coverUV.y = (uv.y - 0.5) * scale + 0.5;
+                    }
+
+                    // Đảm bảo UV không vượt quá giới hạn
+                    coverUV = clamp(coverUV, 0.0, 1.0);
+
+                    // Border radius effect
                     vec2 center = uv - 0.5;
                     vec2 size = vec2(0.5);
-
                     float distance = roundedRectSDF(center, size, borderRadius);
                     float smoothedAlpha = 1.0 - smoothstep(0.0, 0.01, distance);
 
-                    vec4 texColor = texture2D(tex, uv);
+                    vec4 texColor = texture2D(tex, coverUV);
                     gl_FragColor = vec4(texColor.rgb, texColor.a * smoothedAlpha);
                   }
                 `,
