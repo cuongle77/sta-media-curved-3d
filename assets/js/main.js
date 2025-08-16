@@ -96,6 +96,50 @@ class CurvedSlider3D {
 
     // Mouse events
     this.container.addEventListener("mousedown", (e) => {
+      // Kiểm tra xem click có nằm trong vùng cho phép không (responsive)
+      const rect = this.container.getBoundingClientRect();
+      const clickY = e.clientY - rect.top;
+      const clickX = e.clientX - rect.left;
+      const containerHeight = rect.height;
+      const containerWidth = rect.width;
+      const isLargeScreen = window.innerWidth >= 720;
+
+      // Kiểm tra vùng top
+      const allowedTop = isLargeScreen
+        ? containerHeight * 0.3
+        : containerHeight * 0.35;
+
+      if (clickY < allowedTop) {
+        // Kiểm tra thêm vùng width cho desktop
+        if (isLargeScreen) {
+          const areaLeft = containerWidth * 0.25; // 25% từ trái
+          const areaRight = containerWidth * 0.75; // 75% từ trái
+          if (clickX >= areaLeft && clickX <= areaRight) {
+            return; // Chỉ chặn nếu click trong vùng area
+          }
+        } else {
+          return; // Mobile: chặn toàn bộ top
+        }
+      }
+
+      // Kiểm tra vùng bottom
+      const allowedBottom = isLargeScreen
+        ? containerHeight * 0.7
+        : containerHeight * 0.65;
+
+      if (clickY > allowedBottom) {
+        // Kiểm tra thêm vùng width cho desktop
+        if (isLargeScreen) {
+          const areaLeft = containerWidth * 0.25; // 25% từ trái
+          const areaRight = containerWidth * 0.75; // 75% từ trái
+          if (clickX >= areaLeft && clickX <= areaRight) {
+            return; // Chỉ chặn nếu click trong vùng area
+          }
+        } else {
+          return; // Mobile: chặn toàn bộ bottom
+        }
+      }
+
       this.startDrag(e.clientX, e.clientY);
       startTime = Date.now();
       startPosition = e.clientX;
@@ -152,6 +196,49 @@ class CurvedSlider3D {
       (e) => {
         e.preventDefault();
         const touch = e.touches[0];
+
+        // Kiểm tra xem touch có nằm trong vùng cho phép không (responsive)
+        const rect = this.container.getBoundingClientRect();
+        const touchY = touch.clientY - rect.top;
+        const touchX = touch.clientX - rect.left;
+        const containerHeight = rect.height;
+        const containerWidth = rect.width;
+        const isLargeScreen = window.innerWidth >= 720;
+
+        // Kiểm tra vùng top
+        const allowedTop = isLargeScreen
+          ? containerHeight * 0.3
+          : containerHeight * 0.35;
+
+        if (touchY < allowedTop) {
+          // Kiểm tra thêm vùng width cho desktop
+          if (isLargeScreen) {
+            const areaLeft = containerWidth * 0.25; // 25% từ trái
+            const areaRight = containerWidth * 0.75; // 75% từ trái
+            if (touchX >= areaLeft && touchX <= areaRight) {
+              return; // Chỉ chặn nếu touch trong vùng area
+            }
+          } else {
+            return; // Mobile: chặn toàn bộ top
+          }
+        }
+
+        const allowedBottom = isLargeScreen
+          ? containerHeight * 0.7
+          : containerHeight * 0.65;
+
+        if (touchY > allowedBottom) {
+          // Kiểm tra thêm vùng width cho desktop
+          if (isLargeScreen) {
+            const areaLeft = containerWidth * 0.25; // 25% từ trái
+            const areaRight = containerWidth * 0.75; // 75% từ trái
+            if (touchX >= areaLeft && touchX <= areaRight) {
+              return; // Chỉ chặn nếu touch trong vùng area
+            }
+          } else {
+            return; // Mobile: chặn toàn bộ bottom
+          }
+        }
 
         this.startDrag(touch.clientX, touch.clientY);
         startTime = Date.now();
