@@ -96,17 +96,6 @@ class CurvedSlider3D {
 
     // Mouse events
     this.container.addEventListener("mousedown", (e) => {
-      // Kiểm tra xem click có nằm trong vùng cho phép không (35% - 65% của container)
-      const rect = this.container.getBoundingClientRect();
-      const clickY = e.clientY - rect.top;
-      const containerHeight = rect.height;
-      const allowedTop = containerHeight * 0.35;
-      const allowedBottom = containerHeight * 0.65;
-
-      if (clickY < allowedTop || clickY > allowedBottom) {
-        return; // Không cho phép drag nếu click ở vùng cấm
-      }
-
       this.startDrag(e.clientX, e.clientY);
       startTime = Date.now();
       startPosition = e.clientX;
@@ -163,17 +152,6 @@ class CurvedSlider3D {
       (e) => {
         e.preventDefault();
         const touch = e.touches[0];
-
-        // Kiểm tra xem touch có nằm trong vùng cho phép không (35% - 65% của container)
-        const rect = this.container.getBoundingClientRect();
-        const touchY = touch.clientY - rect.top;
-        const containerHeight = rect.height;
-        const allowedTop = containerHeight * 0.35;
-        const allowedBottom = containerHeight * 0.65;
-
-        if (touchY < allowedTop || touchY > allowedBottom) {
-          return; // Không cho phép drag nếu touch ở vùng cấm
-        }
 
         this.startDrag(touch.clientX, touch.clientY);
         startTime = Date.now();
